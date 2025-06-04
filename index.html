@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskZen - Daily & Weekly Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .task-item:hover .task-actions {
+            opacity: 1;
+        }
+        
+        .settings-panel {
+            transition: all 0.3s ease;
+            transform: translateX(100%);
+        }
+        
+        .settings-panel.active {
+            transform: translateX(0);
+        }
+        
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c7c7c7;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-4xl font-bold text-indigo-700">TaskZen</h1>
+                <p class="text-gray-500">Organize your daily & weekly tasks</p>
+            </div>
+            <button id="settings-btn" class="p-3 rounded-full hover:bg-gray-200 transition">
+                <i class="fas fa-cog text-2xl text-gray-600"></i>
+            </button>
+        </header>
+        
+        <!-- Main Content -->
+        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Daily Tasks -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="flex items-center justify-between p-6 bg-gradient-to-r from-blue-500 to-blue-600">
+                    <h2 class="text-2xl font-bold text-white" id="daily-title">Daily Tasks</h2>
+                    <button class="add-daily-task text-white hover:bg-blue-700 p-2 rounded-full transition">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <div class="p-6 max-h-96 overflow-y-auto custom-scrollbar">
+                    <ul class="task-list-daily space-y-3">
+                        <!-- Daily tasks will be added here -->
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Weekly Tasks -->
+            <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="flex items-center justify-between p-6 bg-gradient-to-r from-purple-500 to-purple-600">
+                    <h2 class="text-2xl font-bold text-white" id="weekly-title">Weekly Tasks</h2>
+                    <button class="add-weekly-task text-white hover:bg-purple-700 p-2 rounded-full transition">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <div class="p-6 max-h-96 overflow-y-auto custom-scrollbar">
+                    <ul class="task-list-weekly space-y-3">
+                        <!-- Weekly tasks will be added here -->
+                    </ul>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Stats -->
+        <div class="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white p-6 rounded-xl shadow">
+                <p class="text-gray-500">Total Daily Tasks</p>
+                <p class="text-3xl font-bold daily-count">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow">
+                <p class="text-gray-500">Completed Daily</p>
+                <p class="text-3xl font-bold daily-completed">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow">
+                <p class="text-gray-500">Total Weekly Tasks</p>
+                <p class="text-3xl font-bold weekly-count">0</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow">
+                <p class="text-gray-500">Completed Weekly</p>
+                <p class="text-3xl font-bold weekly-completed">0</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Settings Panel -->
+    <div class="settings-panel fixed inset-y-0 right-0 w-full sm:w-96 bg-white shadow-lg z-50 p-6 overflow-y-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-2xl font-bold">Settings</h3>
+            <button id="close-settings" class="p-2 rounded-full hover:bg-gray-200">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <!-- Rename Sections -->
+        <div class="mb-8">
+            <h4 class="text-lg font-semibold mb-4">Rename Sections</h4>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Daily Tasks Title</label>
+                    <input type="text" id="rename-daily" class="w-full p-2 border rounded-lg" value="Daily Tasks" placeholder="Enter new title">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Weekly Tasks Title</label>
+                    <input type="text" id="rename-weekly" class="w-full p-2 border rounded-lg" value="Weekly Tasks" placeholder="Enter new title">
+                </div>
+                <button id="save-renames" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Save Changes</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const dailyList = document.querySelector('.task-list-daily');
+            const weeklyList = document.querySelector('.task-list-weekly');
+            const addDailyBtn = document.querySelector('.add-daily-task');
+            const addWeeklyBtn = document.querySelector('.add-weekly-task');
+            const settingsBtn = document.getElementById('settings-btn');
+            const closeSettingsBtn = document.getElementById('close-settings');
+            const settingsPanel = document.querySelector('.settings-panel');
+            const colorOptions = document.querySelectorAll('.color-option');
+            const renameDailyInput = document.getElementById('rename-daily');
+            const renameWeeklyInput = document.getElementById('rename-weekly');
+            const saveRenamesBtn = document.getElementById('save-renames');
+            const dailyTitle = document.getElementById('daily-title');
+            const weeklyTitle = document.getElementById('weekly-title');
+            const dailyCountEl = document.querySelector('.daily-count');
+            const dailyCompletedEl = document.querySelector('.daily-completed');
+            const weeklyCountEl = document.querySelector('.weekly-count');
+            const weeklyCompletedEl = document.querySelector('.weekly-completed');
+
+            // Initialize tasks from localStorage if available
+            let tasks = JSON.parse(localStorage.getItem('taskZen-tasks')) || {
+                daily: [],
+                weekly: []
+            };
+            
+            // Load tasks on startup
+            loadTasks();
+            updateStats();
+            
+            // Add new daily task
+            addDailyBtn.addEventListener('click', function() {
+                const newTask = {
+                    id: Date.now(),
+                    text: 'New daily task',
+                    completed: false
+                };
+                tasks.daily.unshift(newTask);
+                saveTasks();
+                renderTask(newTask, 'daily');
+                updateStats();
+                focusLatestTask('daily');
+            });
+            
+            // Add new weekly task
+            addWeeklyBtn.addEventListener('click', function() {
+                const newTask = {
+                    id: Date.now(),
+                    text: 'New weekly task',
+                    completed: false
+                };
+                tasks.weekly.unshift(newTask);
+                saveTasks();
+                renderTask(newTask, 'weekly');
+                updateStats();
+                focusLatestTask('weekly');
+            });
+            
+            // Settings panel toggle
+            settingsBtn.addEventListener('click', function() {
+                settingsPanel.classList.add('active');
+            });
+            
+            closeSettingsBtn.addEventListener('click', function() {
+                settingsPanel.classList.remove('active');
+            });
+            
+            // Rename sections
+            saveRenamesBtn.addEventListener('click', function() {
+                dailyTitle.textContent = renameDailyInput.value;
+                weeklyTitle.textContent = renameWeeklyInput.value;
+                
+                // Save to local storage
+                localStorage.setItem('taskZen-titles', JSON.stringify({
+                    daily: renameDailyInput.value,
+                    weekly: renameWeeklyInput.value
+                }));
+                
+                // Close settings panel
+                settingsPanel.classList.remove('active');
+            });
+            
+            // Load saved titles if available
+            const savedTitles = JSON.parse(localStorage.getItem('taskZen-titles'));
+            if (savedTitles) {
+                dailyTitle.textContent = savedTitles.daily;
+                weeklyTitle.textContent = savedTitles.weekly;
+                renameDailyInput.value = savedTitles.daily;
+                renameWeeklyInput.value = savedTitles.weekly;
+            }
+            
+            // Functions
+            function loadTasks() {
+                dailyList.innerHTML = '';
+                weeklyList.innerHTML = '';
+                
+                tasks.daily.forEach(task => renderTask(task, 'daily'));
+                tasks.weekly.forEach(task => renderTask(task, 'weekly'));
+            }
+            
+            function renderTask(task, type) {
+                const li = document.createElement('li');
+                li.className = 'task-item bg-white p-4 rounded-lg border flex items-start hover:shadow transition';
+                li.dataset.id = task.id;
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'mt-1 mr-3';
+                checkbox.checked = task.completed;
+                
+                const content = document.createElement('div');
+                content.className = 'flex-1';
+                
+                const text = document.createElement('div');
+                text.className = 'task-text border-b border-transparent hover:border-gray-300 focus:border-blue-500 outline-none px-1 py-1';
+                text.contentEditable = true;
+                text.textContent = task.text;
+                
+                const actions = document.createElement('div');
+                actions.className = 'task-actions opacity-0 transition ml-2 flex space-x-1';
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'text-red-500 hover:text-red-700 p-1';
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                
+                const moveBtn = document.createElement('button');
+                moveBtn.className = 'text-gray-500 hover:text-gray-700 p-1';
+                moveBtn.innerHTML = `<i class="fas fa-arrow-${type === 'daily' ? 'right' : 'left'}"></i>`;
+                
+                content.appendChild(text);
+                actions.appendChild(moveBtn);
+                actions.appendChild(deleteBtn);
+                
+                li.appendChild(checkbox);
+                li.appendChild(content);
+                li.appendChild(actions);
+                
+                if (type === 'daily') {
+                    dailyList.appendChild(li);
+                } else {
+                    weeklyList.appendChild(li);
+                }
+                
+                // Event listeners
+                checkbox.addEventListener('change', function() {
+                    task.completed = this.checked;
+                    saveTasks();
+                    updateStats();
+                    if (this.checked) {
+                        li.classList.add('opacity-70');
+                        text.classList.add('line-through', 'text-gray-500');
+                    } else {
+                        li.classList.remove('opacity-70');
+                        text.classList.remove('line-through', 'text-gray-500');
+                    }
+                });
+                
+                if (task.completed) {
+                    li.classList.add('opacity-70');
+                    text.classList.add('line-through', 'text-gray-500');
+                }
+                
+                text.addEventListener('blur', function() {
+                    task.text = this.textContent;
+                    saveTasks();
+                });
+                
+                deleteBtn.addEventListener('click', function() {
+                    if (confirm('Are you sure you want to delete this task?')) {
+                        if (type === 'daily') {
+                            tasks.daily = tasks.daily.filter(t => t.id !== task.id);
+                        } else {
+                            tasks.weekly = tasks.weekly.filter(t => t.id !== task.id);
+                        }
+                        li.remove();
+                        saveTasks();
+                        updateStats();
+                    }
+                });
+                
+                moveBtn.addEventListener('click', function() {
+                    if (type === 'daily') {
+                        // Move to weekly
+                        tasks.daily = tasks.daily.filter(t => t.id !== task.id);
+                        tasks.weekly.unshift(task);
+                    } else {
+                        // Move to daily
+                        tasks.weekly = tasks.weekly.filter(t => t.id !== task.id);
+                        tasks.daily.unshift(task);
+                    }
+                    saveTasks();
+                    loadTasks();
+                    updateStats();
+                });
+                
+                // Prevent enter key from creating new line (just blur instead)
+                text.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.blur();
+                    }
+                });
+            }
+            
+            function saveTasks() {
+                localStorage.setItem('taskZen-tasks', JSON.stringify(tasks));
+            }
+            
+            function updateStats() {
+                dailyCountEl.textContent = tasks.daily.length;
+                weeklyCountEl.textContent = tasks.weekly.length;
+                
+                const dailyCompleted = tasks.daily.filter(task => task.completed).length;
+                const weeklyCompleted = tasks.weekly.filter(task => task.completed).length;
+                
+                dailyCompletedEl.textContent = dailyCompleted;
+                weeklyCompletedEl.textContent = weeklyCompleted;
+            }
+            
+            function focusLatestTask(type) {
+                const list = type === 'daily' ? dailyList : weeklyList;
+                const firstTask = list.querySelector('li:first-child .task-text');
+                if (firstTask) {
+                    firstTask.focus();
+                    
+                    // Select all text for easy editing
+                    const range = document.createRange();
+                    range.selectNodeContents(firstTask);
+                    const selection = window.getSelection();
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
